@@ -1,3 +1,8 @@
+﻿/*Projekat iz predmeta Autoelektronika "Provera stanja vrata u automobilu" + MISRA 
+* Vladimir Marćiš EE 50/2017
+* Sergej Augustinov EE 33/2017
+ */
+
 /* Standard includes. */
 #include <stdio.h>
 #include <conio.h>
@@ -56,8 +61,9 @@ typedef struct _Senzori_struct {
 	uint8_t brzina;
 } Senzori_struct;
 
-
-static void Led_bar_tsk(void* pvParameters) {
+/* Led_bar_tsk sluzi za odredjivanje da li je prekidac za gepek  ukljucen i za paljenje odredjenih dioda */
+static void Led_bar_tsk(void* pvParameters) 
+{
 
 	uint8_t prekidac = 0;
 	uint8_t serijska = 0;
@@ -70,8 +76,8 @@ static void Led_bar_tsk(void* pvParameters) {
 
 		if (xSemaphoreTake(LED_int_BinarySemaphore, pdMS_TO_TICKS(200)) != pdTRUE)
 		{
-			//printf("Greska prilikom preuzimanja semafora2 \n");
-		}
+			//printf("Greska prilikom preuzimanja semafora2 \n"); //prijavljivace gresku zbog toga sto LED_int_BinarySemaphore dajemo kad pravimo promenu na tasteru
+		}														// da stoji portMAX_DELAY kod bi ovde bio blokiran, zbog toga stoji 200ms
 
 		if (xQueueReceive(Queue_serijska, &serijska, portMAX_DELAY) != pdTRUE)
 		{
@@ -87,30 +93,28 @@ static void Led_bar_tsk(void* pvParameters) {
 			printf("Preuzimanje podataka iz reda6 nije uspelo");
 		}
 
-		if (get_LED_BAR(0, &prekidac) != 0)
+		if (get_LED_BAR(0, &prekidac) != 0)   //provera da li je prekidac za gepek ukljucen 
 		{
 			printf("Greska prilikom ocitavanja");
 		}
 
-		printf("Serijska je %d \n", serijska);
-
-		if ((gepek == (uint8_t)0x31) && (prekidac == (uint8_t)0x01) && (serijska == (uint8_t)1))
-		{
+		if ((gepek == (uint8_t)0x31) && (prekidac == (uint8_t)0x01) && (serijska == (uint8_t)1)) //ukoliko je prekidac za gepek ukljucen, ukoliko je gepek otvoren i 
+		{																						// ukoliko serijska ne salje odredjeni signal, ukljucuje se alarm za gepek 
 			if (set_LED_BAR(1, 0x01) != 0)
 			{
 				printf("Greska prilikom setovanja LED bara");
 			}
 		}
 
-		if ((gepek == (uint8_t)0x30) || (prekidac == (uint8_t)0x00) || (serijska == (uint8_t)0))
-		{
+		if ((gepek == (uint8_t)0x30) || (prekidac == (uint8_t)0x00) || (serijska == (uint8_t)0)) //ukoliko je prekidac za gepek iskljucen ili je gepek zatvoren ili
+		{																						// serijska salje odredjeni signal, iskljucuje se alarm za gepek
 			if (set_LED_BAR(1, 0x00) != 0)
 			{
 				printf("Greska prilikom setovanja LED bara");
 			}
 		}
 
-		if (otvorena_vrata == (uint8_t)1)
+		if (otvorena_vrata == (uint8_t)1) //ukoliko je brzina veca od 5 i ako su neka vrata otvorena, ukljucuju se diode da blinkaju 
 		{
 			if (set_LED_BAR(2, blink) != 0)
 			{
@@ -128,14 +132,14 @@ static void Led_bar_tsk(void* pvParameters) {
 			printf("Greska prilikom resetovanja reda");
 		}
 
-		if (xQueueSend(Queue_prekidac, &prekidac, 0) != pdTRUE)
+		if (xQueueSend(Queue_prekidac, &prekidac, 0) != pdTRUE) 
 		{
 			printf("Slanje podataka u red5 nije uspelo");
 		}
 	}
 }
 
-
+/*Serial_send_PC  task sluzi za slanje upozorenja na serijsku ukoliko je gepek ukljucen i ukoliko su neka vrata otvorena a brzina veca od 5 */
 static void Serial_send_PC(void* pvParameters) {
 
 	Senzori_struct senzori;
@@ -159,7 +163,7 @@ static void Serial_send_PC(void* pvParameters) {
 			//ne moze da se ceka jako dugo jer ce da se zablokira program dok se ne posalje nesto preko serijske, zato stoji 100ms
 		}
 
-		if (xQueueReceive(Queue_prekidac, &prekidac, pdMS_TO_TICKS(100)) != pdTRUE)
+		if (xQueueReceive(Queue_prekidac, &prekidac, pdMS_TO_TICKS(150)) != pdTRUE)
 		{
 			printf("Preuzimanje podataka iz reda5 nije uspelo");
 		}
@@ -176,9 +180,9 @@ static void Serial_send_PC(void* pvParameters) {
 			vrata = 2;
 		}
 
-		else if ((senzori.vrata[3] == (uint8_t)0x31))
-		{
-			vrata = 3;
+		else if ((senzori.vrata[3] == (uint8_t)0x31))    // odredjujemo koja su vrata otvorena 
+		{												// 1 = prednja leva 2 = prednja desna 3 = zadnja leva 4 = zadnja desna 5 = gepek 
+			vrata = 3;									// 0 = sva vrata zatvorena
 		}
 
 		else if ((senzori.vrata[1] == (uint8_t)0x31))
@@ -206,7 +210,7 @@ static void Serial_send_PC(void* pvParameters) {
 				{
 					printf("Neuspesno selektovanje 7seg");
 				}
-
+																//ako je brzina veca od 5 i ako su neka od 4 vrata otvorena onda se upozorenja ispisuje na serijsku 
 				if ((set_7seg_digit(hexnum[vrata])) != 0)
 				{
 					printf("Neuspesno setovanje 7seg");
@@ -304,24 +308,32 @@ static void Serial_send_PC(void* pvParameters) {
 			otvorena_vrata = 0;
 		}
 
+		if (xQueueReset(Queue_gepek) != pdTRUE)
+		{
+			printf("Neuspesno brisanje podataka iz reda");
+		}
 		if (xQueueSend(Queue_gepek, &senzori.vrata[4], 0) != pdTRUE)
 		{
 			printf("Slanje podataka u red8 nije uspelo \n");
 		}
 
+		if (xQueueReset(Queue_otvorena_vrata) != pdTRUE)
+		{
+			printf("Neuspesno brisanje podataka iz reda");
+		}
 		if (xQueueSend(Queue_otvorena_vrata, &otvorena_vrata, 0) != pdTRUE)
 		{
 			printf("Slanje podataka u red7 nije uspelo \n");
 		}
-		printf("PORUKA je %d \n", poruka);
+		
 		if ((senzori.vrata[4] == (uint8_t)0x31))
 		{
 			if ((prekidac == (uint8_t)1))
 			{
 				if ((poruka != (uint8_t)0x47))
 				{
-					serijska = 1;
-
+					serijska = 1;								//ako je gepek otvoren i ako je prekidac za gepek ukljucen, ispisuje se 
+																//upozorenje za otvoren gepek na serijsku
 					if (temp == (uint8_t)1)
 					{
 						if (send_serial_character(COM_CH1, (0x55)) != 0) //U
@@ -424,6 +436,10 @@ static void Serial_send_PC(void* pvParameters) {
 			
 		}
 
+		if (xQueueReset(Queue_serijska) != pdTRUE)
+		{
+			printf("Neuspesno brisanje podataka iz reda");
+		}
 		if (xQueueSend(Queue_serijska, &serijska, 0) != pdTRUE)
 		{
 			printf("Slanje podataka u red6 nije uspelo \n");
@@ -432,7 +448,7 @@ static void Serial_send_PC(void* pvParameters) {
 	}
 
 }
-
+/*Serial_send_senzori task sluzi za slanje karaktera 'Z' na serijsku da bi dobili podatke sa senzora brzine i sa senzora vrata*/
 static void Serial_send_senzori(TimerHandle_t timer1)
 {
 
@@ -446,7 +462,7 @@ static void Serial_send_senzori(TimerHandle_t timer1)
 	}
 
 }
-
+/*Senzori_inf task sluzi za pakovanje podataka sa senzora brzine i sa senzora vrata u strukturu*/
 static void Senzori_inf(void* pvParameters) {
 
 	Senzori_struct senzori;
@@ -478,7 +494,7 @@ static void Senzori_inf(void* pvParameters) {
 	}
 
 }
-
+/*Serial_receive_tsk_PC sluzi za primanje podataka sa serijske komunikacije*/
 static void Serial_receive_tsk_PC(void* pvParameters) {
 
 	uint8_t cc;
@@ -504,7 +520,7 @@ static void Serial_receive_tsk_PC(void* pvParameters) {
 		}
 	}
 }
-
+/*Serial_receive_tsk_brzina task sluzi za primanje podataka sa senzora brzine*/
 static void Serial_receive_tsk_brzina(void* pvParameters) {
 
 	uint8_t cc = 0;
@@ -513,8 +529,8 @@ static void Serial_receive_tsk_brzina(void* pvParameters) {
 	for (;;) 
 	{
 
-		if (xSemaphoreTake(RXC_BinarySemaphore0, portMAX_DELAY) != pdTRUE) 
-		{ //znamo da je nesto stiglo sa senzora
+		if (xSemaphoreTake(RXC_BinarySemaphore0, portMAX_DELAY) != pdTRUE) //znamo da je nesto stiglo sa senzora brzine
+		{ 
 			printf("Greska prilikom preuzimanja semafora0");
 		}
 		if (get_serial_character(0, &cc) != 0) 
@@ -524,18 +540,21 @@ static void Serial_receive_tsk_brzina(void* pvParameters) {
 
 		if ((cc != (uint8_t)0xef) && (cc != (uint8_t)0xff) && (cc != (uint8_t)0xfe) && (cc != (uint8_t)0x30) && (cc != (uint8_t)0x31))  // START bajt za brzinu je ef a STOP bajt je ff; 
 		{																																// START bajt za vrata je fe a 0x30 i 0x31 su 
-			trenutna_brzina = cc;																												   //	hex brojevi za ASCII tabelu za brojeve 0 i 1															               
+			trenutna_brzina = cc;																										 //	hex brojevi za ASCII tabelu za brojeve 0 i 1															               
 		}
 
+		if (xQueueReset(Queue_brzina) != pdTRUE) 
+		{
+			printf("Neuspesno brisanje podataka iz reda");
+		}
 		if (xQueueSend(Queue_brzina, &trenutna_brzina, 0) != pdTRUE) 
 		{
-			//printf("Slanje podataka u red nije uspelo0 \n");
+			printf("Slanje podataka u red nije uspelo0 \n");
 		}
 	}
 
 }
-
-
+/*Serial_receive_tsk_vrata task sluzi za primanje podataka sa senzora vrata*/
 static void Serial_receive_tsk_vrata(void* pvParameters) {
 
 	uint8_t cc;
@@ -549,7 +568,7 @@ static void Serial_receive_tsk_vrata(void* pvParameters) {
 	{
 
 
-		if (xSemaphoreTake(RXC_BinarySemaphore0, portMAX_DELAY) != pdTRUE)  //znamo da je nesto stiglo sa senzora
+		if (xSemaphoreTake(RXC_BinarySemaphore0, portMAX_DELAY) != pdTRUE)  //znamo da je nesto stiglo sa senzora vrata
 		{
 			printf("Greska prilikom preuzimanja semafora");
 		}
@@ -558,12 +577,12 @@ static void Serial_receive_tsk_vrata(void* pvParameters) {
 			printf("Greska prilikom preuzimanja karaktera");
 		}
 
-		if (cc == (uint8_t)0xfe)  //proveravamo da li je pocetak poruke, fe = START bajt za vrata
+		if (cc == (uint8_t)0xfe)  //proveravamo da li je pocetak poruke, fe je START bajt za vrata
 		{ 
 			r_point = 0;
 		}
 
-		else if (cc == (uint8_t)0xff)  //proveravamo da li je kraj poruke, ff = STOP bajt  za vrata 
+		else if (cc == (uint8_t)0xff)  //proveravamo da li je kraj poruke, ff je STOP bajt  za vrata 
 		{ 
 			pd = r_buffer[0];
 			zd = r_buffer[1];
@@ -573,7 +592,7 @@ static void Serial_receive_tsk_vrata(void* pvParameters) {
 
 			if (xQueueSend(Queue_vrata, &r_buffer, 0) != pdTRUE) 
 			{
-				printf("Slanje podataka u red nije uspelo0000");
+				printf("Slanje podataka u red nije uspelo0");
 			}
 		}
 
@@ -596,7 +615,7 @@ static void Serial_receive_tsk_vrata(void* pvParameters) {
 		}
 		else 
 		{
-			printf("Neuspesno primljena poruka");
+			//printf("Uspesno primljena poruka"); //ovaj else je dodat zbog MISRA pravila 
 		}
 
 	}
