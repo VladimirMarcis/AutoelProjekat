@@ -201,6 +201,16 @@ static void Serial_send_PC(void* pvParameters) {
 			{
 				otvorena_vrata = 1;
 
+				if ((select_7seg_digit(0)) != 0)
+				{
+					printf("Neuspesno selektovanje 7seg");
+				}
+
+				if ((set_7seg_digit(hexnum[vrata])) != 0)
+				{
+					printf("Neuspesno setovanje 7seg");
+				}
+
 				if (temp == (uint8_t)1)
 				{
 					if (send_serial_character(COM_CH1, (0x55)) != 0) //U
@@ -270,15 +280,6 @@ static void Serial_send_PC(void* pvParameters) {
 					temp = 0;
 				}
 
-				if ((select_7seg_digit(0)) != 0)
-				{
-					printf("Neuspesno selektovanje 7seg");
-				}
-
-				if ((set_7seg_digit(hexnum[vrata])) != 0)
-				{
-					printf("Neuspesno setovanje 7seg");
-				}
 			}
 
 			else
@@ -288,7 +289,17 @@ static void Serial_send_PC(void* pvParameters) {
 		}
 
 		else
+
 		{
+			if ((select_7seg_digit(0)) != 0)
+			{
+				printf("Neuspesno selektovanje 7seg");
+			}
+
+			if ((set_7seg_digit(hexnum[0])) != 0)
+			{
+				printf("Neuspesno setovanje 7seg");
+			}
 			otvorena_vrata = 0;
 		}
 
@@ -302,89 +313,82 @@ static void Serial_send_PC(void* pvParameters) {
 			printf("Slanje podataka u red7 nije uspelo \n");
 		}
 
-		if ((senzori.vrata[4] == (uint8_t)0x31) && (prekidac == (uint8_t)1))
+		if ((senzori.vrata[4] == (uint8_t)0x31))
 		{
-			if ((poruka != (uint8_t)0x47))
+			if ((prekidac == (uint8_t)1))
 			{
-				serijska = 1;
-
-				if (temp == (uint8_t)1)
+				if ((poruka != (uint8_t)0x47))
 				{
-					if (send_serial_character(COM_CH1, (0x55)) != 0) //U
+					serijska = 1;
+
+					if (temp == (uint8_t)1)
 					{
-						printf("Neuspesno slanje na serijsku");
+						if (send_serial_character(COM_CH1, (0x55)) != 0) //U
+						{
+							printf("Neuspesno slanje na serijsku");
+						}
+					}
+
+					else if (temp == (uint8_t)2)
+					{
+						if (send_serial_character(COM_CH1, (0x50)) != 0) //P
+						{
+							printf("Neuspesno slanje na serijsku");
+						}
+					}
+
+					else if (temp == (uint8_t)3)
+					{
+						if (send_serial_character(COM_CH1, (0x3a)) != 0) //:
+						{
+							printf("Neuspesno slanje na serijsku");
+						}
+					}
+
+					else if (temp == (uint8_t)4)
+					{
+						if (send_serial_character(COM_CH1, (0x20)) != 0) //SPACE
+						{
+							printf("Neuspesno slanje na serijsku");
+						}
+					}
+
+					else if (temp == (uint8_t)5)
+					{
+						if (send_serial_character(COM_CH1, (0x56)) != 0) //V
+						{
+							printf("Neuspesno slanje na serijsku");
+						}
+					}
+					else if (temp == (uint8_t)6)
+					{
+						if (send_serial_character(COM_CH1, (vrata + '0')) != 0) //koja vrata
+						{
+							printf("Neuspesno slanje na serijsku");
+						}
+					}
+
+					else if (temp == (uint8_t)7)
+					{
+						if (send_serial_character(COM_CH1, (0x4f)) != 0) //O
+						{
+							printf("Neuspesno slanje na serijsku");
+						}
+					}
+
+					else if (temp == (uint8_t)8)
+					{
+						if (send_serial_character(COM_CH1, (0x0d)) != 0) //carriage return
+						{
+							printf("Neuspesno slanje na serijsku");
+						}
+					}
+
+					else
+					{
+						temp = 0;
 					}
 				}
-
-				else if (temp == (uint8_t)2)
-				{
-					if (send_serial_character(COM_CH1, (0x50)) != 0) //P
-					{
-						printf("Neuspesno slanje na serijsku");
-					}
-				}
-
-				else if (temp == (uint8_t)3)
-				{
-					if (send_serial_character(COM_CH1, (0x3a)) != 0) //:
-					{
-						printf("Neuspesno slanje na serijsku");
-					}
-				}
-
-				else if (temp == (uint8_t)4)
-				{
-					if (send_serial_character(COM_CH1, (0x20)) != 0) //SPACE
-					{
-						printf("Neuspesno slanje na serijsku");
-					}
-				}
-
-				else if (temp == (uint8_t)5)
-				{
-					if (send_serial_character(COM_CH1, (0x56)) != 0) //V
-					{
-						printf("Neuspesno slanje na serijsku");
-					}
-				}
-				else if (temp == (uint8_t)6)
-				{
-					if (send_serial_character(COM_CH1, (vrata + '0')) != 0) //koja vrata
-					{
-						printf("Neuspesno slanje na serijsku");
-					}
-				}
-
-				else if (temp == (uint8_t)7)
-				{
-					if (send_serial_character(COM_CH1, (0x4f)) != 0) //O
-					{
-						printf("Neuspesno slanje na serijsku");
-					}
-				}
-
-				else if (temp == (uint8_t)8)
-				{
-					if (send_serial_character(COM_CH1, (0x0d)) != 0) //carriage return
-					{
-						printf("Neuspesno slanje na serijsku");
-					}
-				}
-
-				else
-				{
-					temp = 0;
-				}
-			}
-
-			else
-			{
-				serijska = 0;
-			}
-
-			if (xQueueSend(Queue_serijska, &serijska, 0) != pdTRUE)
-			{
-				printf("Slanje podataka u red6 nije uspelo \n");
 			}
 
 			if ((select_7seg_digit(0)) != 0)
@@ -398,17 +402,30 @@ static void Serial_send_PC(void* pvParameters) {
 			}
 		}
 
-		if ((select_7seg_digit(0)) != 0)
+		else
 		{
-			printf("Neuspesno selektovanje 7seg");
+			if (senzori.brzina > (uint8_t)5)
+			{
+				if ((select_7seg_digit(0)) != 0)
+				{
+					printf("Neuspesno selektovanje 7seg");
+				}
+
+				if ((set_7seg_digit(hexnum[vrata]) != 0))
+				{
+					printf("Neuspesno setovanje 7seg");
+				}
+			}
+			serijska = 0;
+			
 		}
 
-		if ((set_7seg_digit(hexnum[vrata]) != 0))
+		if (xQueueSend(Queue_serijska, &serijska, 0) != pdTRUE)
 		{
-			printf("Neuspesno setovanje 7seg");
+			printf("Slanje podataka u red6 nije uspelo \n");
 		}
+
 	}
-
 
 }
 
