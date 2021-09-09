@@ -27,8 +27,8 @@
 #define	SERVICE_TASK_PRI		( tskIDLE_PRIORITY + 1 )
 
 /* TASKS: FORWARD DECLARATIONS */
-static void Serial_receive_tsk_vrata(void* pvParameters);
 static void Serial_receive_tsk_brzina(void* pvParameters);
+static void Serial_receive_tsk_vrata(void* pvParameters);
 static void Senzori_inf(void* pvParameters);
 static uint32_t processRXCInterrupt(void);
 static void Serial_send_senzori(TimerHandle_t timer1);
